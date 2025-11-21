@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::BufRead};
+use std::collections::HashMap;
 
 use tokio::{
     io::{AsyncReadExt, BufReader},
@@ -60,6 +60,7 @@ pub fn parse_request(
         path: parts[1].clone(),
         headers: headers.clone(),
         body,
+        state: HashMap::new(),
     }
 }
 

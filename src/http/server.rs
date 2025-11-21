@@ -10,7 +10,7 @@ pub enum MiddlewareResponse {
     Response(Response),
 }
 pub type Middleware = fn(&mut Request) -> MiddlewareResponse;
-pub type HTTPHandlers = HashMap<String, HTTPHandler>;
+pub type HTTPHandlers = HashMap<String, HashMap<String, HTTPHandler>>;
 pub struct Server {
     address: String,
     handlers: HTTPHandlers,
@@ -26,7 +26,18 @@ impl Server {
         }
     }
     pub fn add_handler(&mut self, method: &str, path: &str, handler: fn(&mut Request) -> Response) {
-        self.handlers.insert(method.to_lowercase() + path, handler);
+        match self.handlers.get(path) {
+            Some(dict) => {
+                let mut updated = dict.clone();
+                updated.insert(method.to_lowercase().to_string(), handler);
+                self.handlers.insert(path.to_string(), updated);
+            }
+            None => {
+                let dict: HashMap<String, HTTPHandler> =
+                    HashMap::from([(method.to_lowercase().to_string(), handler)]);
+                self.handlers.insert(path.to_string(), dict);
+            }
+        };
     }
     pub fn add_middleware(&mut self, middleware: Middleware) {
         self.middlewares.push(middleware);

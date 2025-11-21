@@ -18,17 +18,19 @@ fn handle_request(
     middlewares: Arc<Vec<Middleware>>,
     handlers: Arc<HTTPHandlers>,
 ) -> Response {
-    let key = request.method.to_lowercase() + request.path.as_str();
-    match handlers.get(&key) {
-        Some(handler) => {
-            for middleware in middlewares.iter() {
-                match middleware(request) {
-                    MiddlewareResponse::Next() => continue,
-                    MiddlewareResponse::Response(res) => return res,
-                };
+    match handlers.get(request.path.as_str()) {
+        Some(methods) => match methods.get(request.method.to_lowercase().as_str()) {
+            Some(handler) => {
+                for middleware in middlewares.iter() {
+                    match middleware(request) {
+                        MiddlewareResponse::Next() => continue,
+                        MiddlewareResponse::Response(res) => return res,
+                    };
+                }
+                handler(request)
             }
-            handler(request)
-        }
+            None => Response::text("405 Method Not Allowed", 405, "METHOD_NOT_ALLOWED"),
+        },
         None => Response::text("404 Not found", 404, "NOT_FOUND"),
     }
 }

@@ -6,4 +6,5 @@ pub struct Request {
     pub path: String,
     pub headers: HashMap<String, String>,
     pub body: Body,
+    pub state: HashMap<String, String>,
 }
