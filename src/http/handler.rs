@@ -5,22 +5,39 @@ use tokio::{
     net::TcpStream,
 };
 
+use crate::http::server::MiddlewareResponse;
 use crate::http::{
     parsers::{parse_body, parse_headers, parse_request, prepare_response},
     request::Request,
     response::Response,
-    server::HTTPHandlers,
+    server::{HTTPHandlers, Middleware},
 };
 
-fn handle_request(request: Request, handlers: Arc<HTTPHandlers>) -> Response {
+fn handle_request(
+    request: &mut Request,
+    middlewares: Arc<Vec<Middleware>>,
+    handlers: Arc<HTTPHandlers>,
+) -> Response {
     let key = request.method.to_lowercase() + request.path.as_str();
     match handlers.get(&key) {
-        Some(handler) => handler(request),
+        Some(handler) => {
+            for middleware in middlewares.iter() {
+                match middleware(request) {
+                    MiddlewareResponse::Next() => continue,
+                    MiddlewareResponse::Response(res) => return res,
+                };
+            }
+            handler(request)
+        }
         None => Response::text("404 Not found", 404, "NOT_FOUND"),
     }
 }
 
-pub async fn handle_connection(stream: TcpStream, handlers: Arc<HTTPHandlers>) {
+pub async fn handle_connection(
+    stream: TcpStream,
+    middlewares: Arc<Vec<Middleware>>,
+    handlers: Arc<HTTPHandlers>,
+) {
     let (read_half, mut write_half) = stream.into_split();
     let mut reader = BufReader::new(read_half);
     let mut ln = 0;
@@ -41,8 +58,8 @@ pub async fn handle_connection(stream: TcpStream, handlers: Arc<HTTPHandlers>) {
     }
     let headers_map = parse_headers(headers);
     let body = parse_body(&headers_map, &mut reader).await;
-    let request = parse_request(request_line, &headers_map, body);
-    let response = handle_request(request, handlers);
+    let mut request = parse_request(request_line, &headers_map, body);
+    let response = handle_request(&mut request, middlewares, handlers);
     let server_response = prepare_response(response);
     write_half
         .write_all(server_response.as_bytes())

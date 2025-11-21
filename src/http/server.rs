@@ -2,13 +2,19 @@ use std::{collections::HashMap, sync::Arc};
 
 use super::handler::handle_connection;
 use crate::http::{request::Request, response::Response};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 
-pub type HTTPHandler = Box<fn(Request) -> Response>;
+pub type HTTPHandler = fn(&mut Request) -> Response;
+pub enum MiddlewareResponse {
+    Next(),
+    Response(Response),
+}
+pub type Middleware = fn(&mut Request) -> MiddlewareResponse;
 pub type HTTPHandlers = HashMap<String, HTTPHandler>;
 pub struct Server {
     address: String,
     handlers: HTTPHandlers,
+    middlewares: Vec<Middleware>,
 }
 
 impl Server {
@@ -16,19 +22,27 @@ impl Server {
         Server {
             address: address.to_string(),
             handlers: HashMap::new(),
+            middlewares: Vec::new(),
         }
     }
-    pub fn add_handler(&mut self, method: &str, path: &str, handler: fn(Request) -> Response) {
-        let handler = Box::new(handler);
+    pub fn add_handler(&mut self, method: &str, path: &str, handler: fn(&mut Request) -> Response) {
         self.handlers.insert(method.to_lowercase() + path, handler);
+    }
+    pub fn add_middleware(&mut self, middleware: Middleware) {
+        self.middlewares.push(middleware);
     }
     pub async fn serve(self) {
         let listener = TcpListener::bind(self.address.clone()).await.unwrap();
         let handlers = Arc::new(self.handlers);
+        let middlewares = Arc::new(self.middlewares);
         println!("Server started on: {}!", self.address.clone());
         loop {
             let (stream, _) = listener.accept().await.unwrap();
-            tokio::spawn(handle_connection(stream, Arc::clone(&handlers)));
+            tokio::spawn(handle_connection(
+                stream,
+                Arc::clone(&middlewares),
+                Arc::clone(&handlers),
+            ));
         }
     }
 }
