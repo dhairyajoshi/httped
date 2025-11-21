@@ -12,9 +12,9 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(address: String) -> Server {
+    pub fn new(address: &str) -> Server {
         Server {
-            address,
+            address: address.to_string(),
             handlers: HashMap::new(),
         }
     }

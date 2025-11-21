@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -9,14 +9,14 @@ use crate::http::{
     parsers::{parse_body, parse_headers, parse_request, prepare_response},
     request::Request,
     response::Response,
-    server::{HTTPHandler, HTTPHandlers},
+    server::HTTPHandlers,
 };
 
 fn handle_request(request: Request, handlers: Arc<HTTPHandlers>) -> Response {
     let key = request.method.to_lowercase() + request.path.as_str();
     match handlers.get(&key) {
         Some(handler) => handler(request),
-        None => Response::text("404 Not found".to_string(), 404, "NOT_FOUND".to_string()),
+        None => Response::text("404 Not found", 404, "NOT_FOUND"),
     }
 }
 

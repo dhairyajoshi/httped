@@ -6,7 +6,7 @@ use crate::http::{
 };
 
 pub fn boo(request: Request) -> Response {
-    Response::text("boo".to_string(), 200, "OK".to_string())
+    Response::text("boo", 200, "OK")
 }
 
 pub fn echo(request: Request) -> Response {

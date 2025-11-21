@@ -13,14 +13,14 @@ pub struct Response {
 }
 
 impl Response {
-    pub fn text(text: String, status: i32, status_text: String) -> Response {
+    pub fn text(text: &str, status: i32, status_text: &str) -> Response {
         let mut headers = HashMap::from([("content-type".to_string(), "text/plain".to_string())]);
         headers.insert("content-length".to_string(), text.len().to_string());
         Response {
             headers,
-            body: text,
+            body: text.to_string(),
             status,
-            status_text,
+            status_text: status_text.to_string(),
         }
     }
     pub fn json(data: HashMap<String, String>, status: i32, status_text: &str) -> Response {
