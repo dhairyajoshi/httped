@@ -4,9 +4,11 @@ use super::handler::handle_connection;
 use crate::http::{request::Request, response::Response};
 use tokio::net::{TcpListener, TcpStream};
 
+pub type HTTPHandler = Box<fn(Request) -> Response>;
+pub type HTTPHandlers = HashMap<String, HTTPHandler>;
 pub struct Server {
     address: String,
-    handlers: HashMap<String, fn(Request) -> Response>,
+    handlers: HTTPHandlers,
 }
 
 impl Server {
@@ -16,15 +18,17 @@ impl Server {
             handlers: HashMap::new(),
         }
     }
-    fn add_handler(&mut self, method: String, path: String, handler: fn(Request) -> Response) {
-        self.handlers.insert(method + path.as_str(), handler);
+    pub fn add_handler(&mut self, method: &str, path: &str, handler: fn(Request) -> Response) {
+        let handler = Box::new(handler);
+        self.handlers.insert(method.to_lowercase() + path, handler);
     }
     pub async fn serve(self) {
         let listener = TcpListener::bind(self.address.clone()).await.unwrap();
+        let handlers = Arc::new(self.handlers);
         println!("Server started on: {}!", self.address.clone());
         loop {
             let (stream, _) = listener.accept().await.unwrap();
-            tokio::spawn(handle_connection(stream));
+            tokio::spawn(handle_connection(stream, Arc::clone(&handlers)));
         }
     }
 }

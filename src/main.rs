@@ -1,8 +1,14 @@
-use crate::http::server::Server;
+use crate::{
+    http::{request::Request, response::Response, server::Server},
+    routes::route::{boo, echo},
+};
 
 mod http;
+mod routes;
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
-    let server = Server::new("localhost:8000".to_string());
+    let mut server = Server::new("localhost:8000".to_string());
+    server.add_handler("get", "/boo", boo);
+    server.add_handler("post", "/echo", echo);
     server.serve().await;
 }

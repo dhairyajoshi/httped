@@ -5,7 +5,10 @@ use tokio::{
     net::tcp::OwnedReadHalf,
 };
 
-use crate::http::{request::Request, response::Body};
+use crate::http::{
+    request::Request,
+    response::{Body, Response},
+};
 pub fn parse_headers(headers: Vec<String>) -> HashMap<String, String> {
     let mut header_map = HashMap::new();
     for header in headers {
@@ -32,7 +35,11 @@ pub async fn parse_body(
         reader.read_exact(&mut bytes).await.unwrap();
         body = match headers_map.get("content-type") {
             Some(content_type) => match content_type.as_str() {
-                "application/json" => Body::Json(HashMap::new()),
+                "application/json" => {
+                    let body_json: HashMap<String, String> =
+                        serde_json::from_str(String::from_utf8(bytes).unwrap().as_str()).unwrap();
+                    Body::Json(body_json)
+                }
                 "text/plain" => Body::Text(String::from_utf8(bytes).unwrap()),
                 _ => Body::None,
             },
@@ -54,4 +61,26 @@ pub fn parse_request(
         headers: headers.clone(),
         body,
     }
+}
+
+pub fn prepare_response(response: Response) -> String {
+    let mut buffer = String::new();
+
+    buffer.push_str("HTTP/1.1 ");
+    buffer.push_str(&response.status.to_string());
+    buffer.push_str(" ");
+    buffer.push_str(&response.status_text);
+    buffer.push_str("\r\n");
+
+    for (k, v) in &response.headers {
+        buffer.push_str(k);
+        buffer.push_str(": ");
+        buffer.push_str(v);
+        buffer.push_str("\r\n");
+    }
+    buffer.push_str("Connection: close\r\n");
+    buffer.push_str("\r\n");
+    buffer.push_str(response.body.as_str());
+
+    buffer
 }
