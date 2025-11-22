@@ -88,7 +88,7 @@ pub fn prepare_response(response: Response) -> String {
 
     buffer.push_str("HTTP/1.1 ");
     buffer.push_str(&response.status.to_string());
-    buffer.push_str(" ");
+    buffer.push(' ');
     buffer.push_str(&response.status_text);
     buffer.push_str("\r\n");
 

@@ -13,7 +13,7 @@ use crate::http::{
     server::{HTTPHandlers, Middleware},
 };
 
-fn handle_request(
+async fn handle_request(
     request: &mut Request,
     middlewares: Arc<Vec<Middleware>>,
     handlers: Arc<HTTPHandlers>,
@@ -27,7 +27,7 @@ fn handle_request(
                         MiddlewareResponse::Response(res) => return res,
                     };
                 }
-                handler(request)
+                handler(request.clone()).await
             }
             None => Response::text("405 Method Not Allowed", 405, "METHOD_NOT_ALLOWED"),
         },
@@ -61,7 +61,7 @@ pub async fn handle_connection(
     let headers_map = parse_headers(headers);
     let body = parse_body(&headers_map, &mut reader).await;
     let mut request = parse_request(request_line, &headers_map, body);
-    let response = handle_request(&mut request, middlewares, handlers);
+    let response = handle_request(&mut request, middlewares, handlers).await;
     let server_response = prepare_response(response);
     write_half
         .write_all(server_response.as_bytes())

@@ -4,7 +4,11 @@ use super::handler::handle_connection;
 use crate::http::{request::Request, response::Response};
 use tokio::net::TcpListener;
 
-pub type HTTPHandler = fn(&mut Request) -> Response;
+use std::future::Future;
+use std::pin::Pin;
+
+pub type HTTPHandler =
+    Box<dyn Fn(Request) -> Pin<Box<dyn Future<Output = Response> + Send>> + Send + Sync>;
 pub enum MiddlewareResponse {
     Next(),
     Response(Response),
@@ -25,19 +29,19 @@ impl Server {
             middlewares: Vec::new(),
         }
     }
-    pub fn add_handler(&mut self, method: &str, path: &str, handler: fn(&mut Request) -> Response) {
-        match self.handlers.get(path) {
-            Some(dict) => {
-                let mut updated = dict.clone();
-                updated.insert(method.to_lowercase().to_string(), handler);
-                self.handlers.insert(path.to_string(), updated);
-            }
-            None => {
-                let dict: HashMap<String, HTTPHandler> =
-                    HashMap::from([(method.to_lowercase().to_string(), handler)]);
-                self.handlers.insert(path.to_string(), dict);
-            }
-        };
+    pub fn add_handler<F, Fut>(&mut self, method: &str, path: &str, handler: F)
+    where
+        F: Fn(Request) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + 'static,
+    {
+        let boxed: HTTPHandler = Box::new(move |req: Request| {
+            Box::pin(handler(req)) as Pin<Box<dyn Future<Output = Response> + Send>>
+        });
+
+        self.handlers
+            .entry(path.to_string())
+            .or_default()
+            .insert(method.to_lowercase(), boxed);
     }
     pub fn add_middleware(&mut self, middleware: Middleware) {
         self.middlewares.push(middleware);

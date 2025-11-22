@@ -1,6 +1,6 @@
 use crate::{
     http::server::Server,
-    middlewares::middleware::{auth_middleware, cheeky_middleware},
+    middlewares::middleware::cheeky_middleware,
     routes::route::{boo, echo},
 };
 
