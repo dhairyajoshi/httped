@@ -6,7 +6,16 @@ use crate::http::{
 };
 
 pub fn boo(request: &mut Request) -> Response {
-    Response::text("boo", 200, "OK")
+    let name = match request.query_params.get("name") {
+        Some(val) => val,
+        None => "default",
+    };
+    let age = match request.query_params.get("age") {
+        Some(val) => val,
+        None => "20",
+    };
+    let greet = "boo ".to_string() + name + ", age " + age;
+    Response::text(greet.as_str(), 200, "OK")
 }
 
 pub fn echo(request: &mut Request) -> Response {

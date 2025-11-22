@@ -54,10 +54,29 @@ pub fn parse_request(
     body: Body,
 ) -> Request {
     let parts: Vec<String> = request_line.split_whitespace().map(String::from).collect();
-
+    let path_with_params: Vec<String> = parts[1].split("?").map(String::from).collect();
+    let mut query_params: HashMap<String, String> = HashMap::new();
+    if path_with_params.len() > 1 {
+        let request_query_params: Vec<String> = path_with_params[1]
+            .split("&")
+            .map(String::from)
+            .map(|e| e.trim().to_string())
+            .collect();
+        for query_param in request_query_params {
+            let tuple: Vec<String> = query_param
+                .split("=")
+                .map(String::from)
+                .map(|e| e.trim().to_string())
+                .collect();
+            if tuple.len() == 2 {
+                query_params.insert(tuple[0].clone(), tuple[1].clone());
+            }
+        }
+    }
     Request {
         method: parts[0].clone(),
-        path: parts[1].clone(),
+        path: path_with_params[0].clone(),
+        query_params: query_params.clone(),
         headers: headers.clone(),
         body,
         state: HashMap::new(),
